@@ -1,0 +1,2 @@
+
+cmake -DCMAKE_BINARY_DIR=$1 .. 

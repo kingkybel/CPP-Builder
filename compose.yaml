@@ -1,0 +1,25 @@
+version: '3.8'
+services:
+  cpp-maker:
+    container_name: cpp${CPP_VERSION}-maker-ubuntu${UBUNTU_VERSION}
+    image: cpp${CPP_VERSION}-maker-ubuntu${UBUNTU_VERSION}:${VERSION}
+    build:
+      dockerfile: Dockerfile
+      args:
+        CPP_VERSION: ${CPP_VERSION}
+        UBUNTU_VERSION: ${UBUNTU_VERSION}
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          memory: 1000m
+    networks:
+      - cpp-maker_net
+    volumes:
+      - ${SOURCE_DIR}:/app/src
+    command: bash -c ./do_build 
+networks:
+  cpp-maker_net:
+    driver: bridge
+    name: cpp-maker_net
+    external: false
