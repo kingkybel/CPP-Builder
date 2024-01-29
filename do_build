@@ -1,2 +1,103 @@
+#!/usr/bin/env bash
 
-cmake -DCMAKE_BINARY_DIR=$1 .. 
+[[ "${0}" != "${BASH_SOURCE[0]}" ]] && THIS_FILE="${BASH_SOURCE[0]}" || THIS_FILE="${0}"
+THIS_DIR=$(realpath "$(dirname ${THIS_FILE})")
+THIS_SCRIPT=$(basename "${THIS_FILE}")
+
+function printUsage() {
+      printf "%s \n\
+      -s|--source-dir <source-directory: root directory of the project> \n\
+      [-b|--build-dir <build-directory>: volatile directory where intermediate files are put>] \n\
+      [-o|--output-dir <output-directory: where to put the artefacts>] \n\
+      [-t|--build-type <cmake build type: Debug|RelWithDebugInfo|...>]\n\
+      [-h|--help]\n\
+      \n\
+      " "${THIS_SCRIPT}"
+}
+
+OPTIONS=$(getopt -o s:b:o:t:h --long source-dir:,build-dir,output-dir:build-type:help -- "$@")
+
+if [ $? != 0 ]; then
+      echo "Terminating..." >&2
+      exit 1
+fi
+
+# Note the quotes around '$OPTIONS': they are essential!
+eval set -- "$OPTIONS"
+
+CMAKE_BINARY_DIR=
+BUILD_DIR=
+OUTPUT_DIR=
+CMAKE_BUILD_TYPE=RelWithDebInfo
+
+while true; do
+      case "$1" in
+      -s | --source-dir)
+            CMAKE_BINARY_DIR=$2
+            shift 2
+            ;;
+      -b | --build-dir)
+            BUILD_DIR=$2
+            shift 2
+            ;;
+      -o | --output-dir)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+      -t | --build-type)
+            OUTPUT_DIR="$2"
+            shift 2
+            ;;
+      -h | --help)
+            printUsage
+            exit ;;
+            
+      --)
+            shift
+            break
+            ;;
+      *) break ;;
+      esac
+done
+
+if [ "${CMAKE_BINARY_DIR}" = "" ]; then
+      printUsage
+      printf "no source directory given. use -s|--source-dir parameter\n"
+      exit 0
+else
+      TMP_PATH=${CMAKE_BINARY_DIR}
+      CMAKE_BINARY_DIR=$(realpath "${CMAKE_BINARY_DIR}" | xargs)
+      if [ "${CMAKE_BINARY_DIR}" = "" ]; then
+            printUsage
+            printf "Source-directory '%s' does not exist\n" "${TMP_PATH}"
+            exit 0
+      fi        
+fi
+
+if [ "${BUILD_DIR}" = "" ]; then
+      BUILD_DIR=${CMAKE_BINARY_DIR}/build.docker
+      mkdir -p "${BUILD_DIR}"
+fi
+
+if [ "${OUTPUT_DIR}" = "" ]; then
+      OUTPUT_DIR=$(realpath "${BUILD_DIR}")
+fi
+
+echo "CMAKE_BINARY_DIR=${CMAKE_BINARY_DIR}"
+echo "CMAKE_BUILD_TYPE=${CMAKE_BUILD_TYPE}"
+echo "BUILD_DIR=${BUILD_DIR}"
+BIN_DIR=${OUTPUT_DIR}/bin
+echo "BIN_DIR=${BIN_DIR}"
+LIB_DIR=${OUTPUT_DIR}/lib
+echo "LIB_DIR=${LIB_DIR}"
+ARCH_DIR=${OUTPUT_DIR}/lib
+echo "ARCH_DIR=${ARCH_DIR}"
+
+pushd "${BUILD_DIR}"
+cmake -DCMAKE_RUNTIME_OUTPUT_DIRECTORY="${BIN_DIR}" \
+      -DCMAKE_LIBRARY_OUTPUT_DIRECTORY="${LIB_DIR}" \
+      -DCMAKE_ARCHIVE_OUTPUT_DIRECTORY="${ARCH_DIR}" \
+      -DCMAKE_BUILD_TYPE="${CMAKE_BUILD_TYPE}" \
+      "${CMAKE_BINARY_DIR}"
+make -j $(nproc)
+popd >/dev/null

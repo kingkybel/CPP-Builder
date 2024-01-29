@@ -1,19 +1,20 @@
-ARG UBUNTU_VERSION
+ARG UBUNTU_VERSION=23
 FROM ubuntu:${UBUNTU_VERSION} as builder
-ARG CPP_VERSION
+ARG CPP_VERSION=13
+ARG BOOST_VERSION=1.84.0
+ARG BOOST_VERSION_UDRSCR=1_84_0
 
 # Install necessary libraries for running the application
 RUN apt-get update
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get install -y  g++-${CPP_VERSION}
 RUN apt-get install -y \
     wget \
     curl \
     make \
     cmake \
+    g++-${CPP_VERSION} \
     libpqxx-dev \
-    libboost-all-dev \
     libwebsocketpp-dev \
     libssl-dev \
     xorg-dev \
@@ -46,10 +47,27 @@ RUN apt-get install -y \
     qtcreator \
     qtbase5-dev \
     qt5-qmake \
-    vtk9
+    vtk9 \
+    libgmp3-dev \
+    libmpfr-dev \
+    libgtest-dev
+
 ENV DEBIAN_FRONTEND=dialog
 
+RUN update-alternatives \
+    --install /usr/bin/g++ g++ /usr/bin/g++-${CPP_VERSION} 100
+
+RUN wget https://boostorg.jfrog.io/artifactory/main/release/${BOOST_VERSION}/source/boost_${BOOST_VERSION_UDRSCR}.tar.gz ; \
+    tar -xf boost_${BOOST_VERSION_UDRSCR}.tar.gz ; \
+    cd boost_${BOOST_VERSION_UDRSCR} ; \
+    ./bootstrap.sh ; \
+    ./b2 link=static install ; \
+    cd .. ; \
+    rm -rf boost_${BOOST_VERSION_UDRSCR}.tar.gz boost_${BOOST_VERSION_UDRSCR} ;
+
 # Set the working directory in the container to /app
-WORKDIR /app
-RUN mkdir build
-WORKDIR /app/build
+RUN mkdir -p /app/sh
+COPY do_build /app/sh
+WORKDIR /app/sh
+RUN chmod +x /app/sh/do_build
+ENTRYPOINT [ "./do_build" ]

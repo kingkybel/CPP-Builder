@@ -3,6 +3,7 @@ services:
   cpp-maker:
     container_name: cpp${CPP_VERSION}-maker-ubuntu${UBUNTU_VERSION}
     image: cpp${CPP_VERSION}-maker-ubuntu${UBUNTU_VERSION}:${VERSION}
+    hostname: cpp${CPP_VERSION}-maker-ubuntu${UBUNTU_VERSION}:${VERSION}
     build:
       dockerfile: Dockerfile
       args:
@@ -16,7 +17,7 @@ services:
     networks:
       - cpp-maker_net
     volumes:
-      - ${SOURCE_DIR}:/app/src
+      - ${SOURCE_DIR}:${SOURCE_DIR}
     command: bash -c ./do_build 
 networks:
   cpp-maker_net:
